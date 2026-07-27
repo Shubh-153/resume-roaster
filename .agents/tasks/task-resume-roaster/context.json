@@ -1,0 +1,31 @@
+{
+  "project_type": "Vanilla JS web app with Node.js backend - Resume Roaster",
+  "language": "JavaScript (ES modules)",
+  "build_system": "None - no build step required. Pure Node.js built-in modules only (INTEGRATIONS_ONLY network, npm registry blocked)",
+  "test_framework": "Node.js built-in assert module and test runner (node:test available in Node 22)",
+  "build_command": "unset NODE_OPTIONS && node --check server/index.js",
+  "test_command": "unset NODE_OPTIONS && node --test server/tests/",
+  "verification_instructions": "1. Run syntax check on all .js files. 2. Run node:test tests. 3. Start server and hit /api/health endpoint. 4. Verify static files serve correctly.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "1. Copy .env.example to .env. 2. Add ANTHROPIC_API_KEY. 3. Run: unset NODE_OPTIONS && node server/index.js",
+  "environment_constraints": "INTEGRATIONS_ONLY network - npm install WILL NOT WORK. All packages are blocked at the registry. Must use ONLY Node.js built-in modules (http, https, fs, path, crypto, url, querystring, zlib, stream, etc.). No Express, no dotenv, no multer, no pdf-parse, no mammoth. NODE_OPTIONS env var has a broken preload path - must unset NODE_OPTIONS before running node commands.",
+  "contribution_requirements": "N/A - greenfield project",
+  "key_patterns": "Custom HTTP server using node:http. Custom multipart parser for file uploads. Custom .env parser. For PDF: basic text extraction from PDF streams. For DOCX: unzip XML and extract text (DOCX is a ZIP of XML files - use node:zlib). Anthropic API via node:https direct HTTP request.",
+  "relevant_files": [
+    "server/index.js",
+    "server/routes/roast.js",
+    "server/lib/parseFile.js",
+    "server/lib/claudeClient.js",
+    "server/lib/rateLimit.js",
+    "server/lib/envLoader.js",
+    "server/lib/router.js",
+    "server/lib/multipart.js",
+    "public/index.html",
+    "public/styles.css",
+    "public/app.js",
+    ".env.example",
+    "package.json",
+    "README.md"
+  ],
+  "directory_structure": "server/ - Node.js backend (HTTP server, routes, lib utilities). public/ - Static frontend (HTML, CSS, JS). server/tests/ - Test files using node:test. server/lib/ - Shared utilities (env loader, router, multipart parser, rate limiter, Claude client, file parser)."
+}

@@ -1,0 +1,36 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Build the complete frontend: HTML page with dark/fire theme, resume input (paste textarea + file upload), intensity toggle, results renderer with animated roast reveal, roast cards, copy/share/export features, ATS flags panel, and responsive mobile design. All vanilla JS with no build step.",
+  "status": "pending",
+  "steps": [
+    "Create public/index.html - Single page app structure with: header (logo + tagline), input section (textarea with character/word count, file upload dropzone accepting .pdf/.docx/.txt, intensity toggle Mild/Medium/Nuclear, optional target role input field, 'Roast My Resume' CTA button disabled until >50 words), results section (hidden initially - score display, headline, top 3 fixes checklist, collapsible sections for each resume section, ATS flags warning panel), share/export section, error state display, loading state with witty messages. Include meta tags for responsive mobile.",
+    "Create public/styles.css - Dark mode design with fire/red accent palette (#1a1a2e background, #e94560 fire red, #0f3460 deep blue accents, #16213e card backgrounds). Monospace font for quoted resume text (Fira Code or system monospace). Speech-bubble style for roasts. Green 'rewrite' boxes for fixes. Strikethrough/red highlight for weak text quotes. Responsive design with mobile-first approach. Animated score counter. Fade-in animations. Collapsible sections with smooth transitions. Toggle button group styling. Dropzone with drag-and-drop visual feedback. Loading spinner/skeleton states.",
+    "Create public/app.js - ES module vanilla JS that handles: (1) Textarea input with live word count updating CTA button state. (2) File upload via click or drag-and-drop, with file type validation. (3) Intensity toggle state management. (4) Form submission - sends POST to /api/roast with either JSON (paste text) or multipart FormData (file). (5) Loading state with rotating witty messages. (6) Results rendering: animated score count-up, headline fade-in, sections expanding one at a time with staggered delay. (7) Each issue card renders quote (strikethrough/red), roast (speech bubble), why (explanation), fix (green box with copy button). (8) Copy button for individual fixes. (9) Export full report as .md or .txt file (client-side download). (10) Shareable roast card - generates a summary card (score + headline) that can be copied as text for sharing. (11) Error state handling with friendly messages. (12) Collapsible sections per resume area.",
+    "Ensure the frontend works fully with just paste-text input even if file parsing has issues - the paste path must never be blocked by file-parsing bugs",
+    "Add proper error handling: network failures show 'Our roast machine choked, try again' style messages, rate limit errors show appropriate message, validation errors show specific guidance"
+  ],
+  "acceptance_criteria": [
+    "Opening index.html in the browser (served by the Node.js server) shows a properly styled dark-theme page",
+    "Word count updates in real-time as user types in textarea",
+    "CTA button is disabled when textarea has fewer than 50 words",
+    "CTA button enables when textarea has 50+ words",
+    "Intensity toggle switches between Mild/Medium/Nuclear with visual feedback",
+    "File upload accepts .pdf, .docx, .txt files and shows filename",
+    "Submitting with text triggers POST to /api/roast and shows loading state",
+    "Results render with animated score, headline, expandable sections",
+    "Each issue card shows quote, roast, why, and fix in distinct visual styles",
+    "Copy buttons work for individual fixes",
+    "Export generates a downloadable .md file",
+    "Mobile responsive - works on narrow viewport without horizontal scroll",
+    "Error states show friendly messages, not raw errors"
+  ],
+  "verification": [
+    "unset NODE_OPTIONS && node --check public/app.js",
+    "Start the server, open http://localhost:3000 in a browser context and verify static files load",
+    "Verify the HTML is valid and all CSS/JS references resolve correctly",
+    "Test responsive design by checking CSS media queries exist"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

@@ -1,0 +1,37 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Scaffold the complete backend infrastructure using only Node.js built-in modules. This includes: custom HTTP server with static file serving, custom router, .env loader, multipart form parser, rate limiter, file parsing (txt/pdf/docx), Claude API client with JSON validation/retry, and the /api/roast + /api/health endpoints. Also create package.json, .env.example, and basic project structure.",
+  "status": "in_progress",
+  "steps": [
+    "Create package.json with name 'resume-roaster', type 'module', scripts for start (node server/index.js) and dev (node --watch server/index.js) and test (node --test server/tests/). No dependencies section needed since we use only built-ins.",
+    "Create .env.example with ANTHROPIC_API_KEY=your_key_here, MODEL=claude-3-haiku-20240307, PORT=3000",
+    "Create server/lib/envLoader.js - reads .env file, parses KEY=VALUE lines (handles comments, empty lines, quotes), sets process.env values. Pure built-in fs usage.",
+    "Create server/lib/router.js - a minimal router class that registers GET/POST handlers by path, parses URL, extracts query params, dispatches to handlers. Handles 404. Supports middleware-style next().",
+    "Create server/lib/multipart.js - parses multipart/form-data request bodies. Extracts fields and files (with filename, content-type, and Buffer data). Uses only Buffer manipulation and string parsing.",
+    "Create server/lib/rateLimit.js - token bucket rate limiter keyed by IP address. Configurable max tokens and refill rate. Returns 429 JSON response when exceeded. Cleans up stale entries periodically.",
+    "Create server/lib/parseFile.js - exports parseFile(buffer, mimetype, filename). For .txt: decode as UTF-8. For .pdf: extract text content by finding text streams between BT/ET markers and decoding them (basic but functional). For .docx: use zlib.unzipSync to extract XML content from the zip, parse word/document.xml to extract text nodes by stripping XML tags.",
+    "Create server/lib/claudeClient.js - makes HTTPS POST to https://api.anthropic.com/v1/messages. Constructs system prompt based on intensity (mild/medium/nuclear) and optional targetRole. Sends resume text as user message. Parses response, extracts JSON from Claude's response text. If JSON parsing fails, retries once with a 'return valid JSON only' instruction. Validates the response has required fields (overallScore, headline, sections, strengths, topFixes, atsFlags).",
+    "Create server/routes/roast.js - POST /api/roast handler. Accepts JSON body (text, intensity, targetRole) OR multipart form data (file upload + fields). Validates input (>50 words). Calls parseFile if file uploaded, then calls claudeClient. Returns JSON response. Handles errors gracefully.",
+    "Create server/index.js - entry point. Loads env vars, creates HTTP server, sets up router with: GET /api/health (returns {status:'ok'}), POST /api/roast (with rate limiting), and static file serving for everything under public/ directory (with proper MIME types for .html, .css, .js, .png, .svg, .ico). Listens on PORT from env.",
+    "Create server/tests/envLoader.test.js - tests the env loader with mock .env content",
+    "Create server/tests/rateLimit.test.js - tests token bucket logic (allow, deny after limit, refill)",
+    "Create server/tests/parseFile.test.js - tests txt parsing and basic structure validation for pdf/docx parsers",
+    "Create server/tests/router.test.js - tests route registration and dispatch"
+  ],
+  "acceptance_criteria": [
+    "Running 'unset NODE_OPTIONS && node --check server/index.js' passes with no syntax errors",
+    "Running 'unset NODE_OPTIONS && node --test server/tests/' passes all tests",
+    "Starting the server with 'unset NODE_OPTIONS && node server/index.js' and hitting localhost:3000/api/health returns {status:'ok'}",
+    "The rate limiter correctly blocks after threshold is exceeded",
+    "The multipart parser correctly extracts file data from multipart form data",
+    "The env loader correctly reads .env files and sets process.env values"
+  ],
+  "verification": [
+    "unset NODE_OPTIONS && node --check server/index.js && node --check server/routes/roast.js && node --check server/lib/claudeClient.js && node --check server/lib/parseFile.js && node --check server/lib/rateLimit.js && node --check server/lib/router.js && node --check server/lib/multipart.js && node --check server/lib/envLoader.js",
+    "unset NODE_OPTIONS && node --test server/tests/",
+    "Start server in background, curl http://localhost:3000/api/health, verify JSON response, kill server"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
