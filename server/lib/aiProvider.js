@@ -1,9 +1,10 @@
 import { callClaude } from './claudeClient.js';
 import { callGemini } from './geminiClient.js';
+import { callOpenRouter } from './openrouterClient.js';
 
 /**
  * Call the configured AI provider to generate a resume roast.
- * Routes to either Claude (Anthropic) or Gemini (Google) based on MODEL_PROVIDER env var.
+ * Routes to Claude (Anthropic), Gemini (Google), or OpenRouter based on MODEL_PROVIDER env var.
  *
  * @param {string} resumeText - The resume text content
  * @param {string} intensity - 'mild', 'medium', or 'nuclear'
@@ -27,5 +28,12 @@ export async function callAI(resumeText, intensity, targetRole) {
     return callClaude(resumeText, intensity, targetRole);
   }
 
-  throw new Error(`Unsupported MODEL_PROVIDER: "${provider}". Must be "anthropic" or "gemini".`);
+  if (provider === 'openrouter') {
+    if (!process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY === 'your_key_here') {
+      throw new Error('OPENROUTER_API_KEY is not configured. Required when MODEL_PROVIDER is set to "openrouter"');
+    }
+    return callOpenRouter(resumeText, intensity, targetRole);
+  }
+
+  throw new Error(`Unsupported MODEL_PROVIDER: "${provider}". Must be "anthropic", "gemini", or "openrouter".`);
 }

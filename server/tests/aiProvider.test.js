@@ -82,4 +82,33 @@ describe('aiProvider', () => {
       /GEMINI_API_KEY is not configured/
     );
   });
+
+  it('should throw when OPENROUTER_API_KEY is missing for openrouter provider', async () => {
+    process.env.MODEL_PROVIDER = 'openrouter';
+    delete process.env.OPENROUTER_API_KEY;
+    const { callAI } = await import(`../lib/aiProvider.js?t=${Date.now()}-openrouter-nokey`);
+    await assert.rejects(
+      () => callAI('resume text here', 'medium', ''),
+      /OPENROUTER_API_KEY is not configured/
+    );
+  });
+
+  it('should throw when OPENROUTER_API_KEY is placeholder for openrouter provider', async () => {
+    process.env.MODEL_PROVIDER = 'openrouter';
+    process.env.OPENROUTER_API_KEY = 'your_key_here';
+    const { callAI } = await import(`../lib/aiProvider.js?t=${Date.now()}-openrouter-placeholder`);
+    await assert.rejects(
+      () => callAI('resume text here', 'medium', ''),
+      /OPENROUTER_API_KEY is not configured/
+    );
+  });
+
+  it('should list all three providers in unsupported provider error', async () => {
+    process.env.MODEL_PROVIDER = 'invalid_provider';
+    const { callAI } = await import(`../lib/aiProvider.js?t=${Date.now()}-allproviders`);
+    await assert.rejects(
+      () => callAI('resume text here', 'medium', ''),
+      /Must be "anthropic", "gemini", or "openrouter"/
+    );
+  });
 });

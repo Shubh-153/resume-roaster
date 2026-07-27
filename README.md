@@ -20,7 +20,7 @@ A web app that gives blunt, constructive feedback on resumes using AI. Roasts we
 
 - **Frontend**: Vanilla JavaScript (ES modules), HTML5, CSS3 - no framework, no build step
 - **Backend**: Node.js with built-in http/https modules (no Express dependency)
-- **AI**: Multi-provider support (Anthropic Claude or Google Gemini)
+- **AI**: Multi-provider support (Anthropic Claude, Google Gemini, or OpenRouter for 100+ models)
 - **File Parsing**: Custom parsers for PDF and DOCX using Node.js built-in zlib
 
 ## Setup
@@ -35,6 +35,7 @@ cp .env.example .env
 # Edit .env and add your API key for the chosen provider:
 #   - For Anthropic (default): set ANTHROPIC_API_KEY
 #   - For Google Gemini: set MODEL_PROVIDER=gemini and GEMINI_API_KEY
+#   - For OpenRouter: set MODEL_PROVIDER=openrouter and OPENROUTER_API_KEY
 
 # Start the server
 npm start
@@ -48,11 +49,13 @@ Open http://localhost:3000 in your browser.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| MODEL_PROVIDER | AI provider to use (`anthropic` or `gemini`) | anthropic |
+| MODEL_PROVIDER | AI provider to use (`anthropic`, `gemini`, or `openrouter`) | anthropic |
 | ANTHROPIC_API_KEY | Your Anthropic API key (required for Claude) | - |
 | MODEL | Claude model to use | claude-3-haiku-20240307 |
 | GEMINI_API_KEY | Your Google Gemini API key (required for Gemini) | - |
 | GEMINI_MODEL | Gemini model to use | gemini-2.0-flash |
+| OPENROUTER_API_KEY | Your OpenRouter API key (required for OpenRouter) | - |
+| OPENROUTER_MODEL | OpenRouter model to use | anthropic/claude-3-haiku |
 | PORT | Server port | 3000 |
 
 ## Switching Between AI Providers
@@ -62,6 +65,17 @@ By default, Resume Roaster uses Anthropic's Claude. To switch to Google Gemini:
 1. Set `MODEL_PROVIDER=gemini` in your `.env` file
 2. Add your Google Gemini API key as `GEMINI_API_KEY`
 3. Optionally set `GEMINI_MODEL` to choose a specific model (defaults to `gemini-2.0-flash`)
+
+To use OpenRouter (access to 100+ models through one API key):
+
+1. Set `MODEL_PROVIDER=openrouter` in your `.env` file
+2. Add your OpenRouter API key as `OPENROUTER_API_KEY` (get one at https://openrouter.ai/keys)
+3. Set `OPENROUTER_MODEL` to any supported model, for example:
+   - `anthropic/claude-3-haiku` (default)
+   - `openai/gpt-4o-mini`
+   - `google/gemini-2.0-flash-exp`
+   - `meta-llama/llama-3-8b-instruct`
+   - `mistralai/mixtral-8x7b-instruct`
 
 To switch back to Anthropic Claude:
 
@@ -137,9 +151,10 @@ resume-roaster/
 │   ├── index.js              # HTTP server entry point
 │   ├── routes/roast.js       # POST /api/roast handler
 │   ├── lib/
-│   │   ├── aiProvider.js     # Multi-provider routing (Claude or Gemini)
+│   │   ├── aiProvider.js     # Multi-provider routing (Claude, Gemini, or OpenRouter)
 │   │   ├── claudeClient.js   # Anthropic API wrapper + JSON validation
 │   │   ├── geminiClient.js   # Google Gemini API wrapper
+│   │   ├── openrouterClient.js # OpenRouter API wrapper (100+ models)
 │   │   ├── envLoader.js      # .env file parser
 │   │   ├── multipart.js      # Multipart form-data parser
 │   │   ├── parseFile.js      # PDF/DOCX/TXT text extraction
