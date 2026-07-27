@@ -1,7 +1,7 @@
 import { Router } from '../lib/router.js';
 import { getBoundary, parseMultipart } from '../lib/multipart.js';
 import { parseFile } from '../lib/parseFile.js';
-import { callClaude } from '../lib/claudeClient.js';
+import { callAI } from '../lib/aiProvider.js';
 
 /**
  * Handler for POST /api/roast.
@@ -81,8 +81,8 @@ export async function handleRoast(req, res) {
       return;
     }
 
-    // Call Claude API
-    const result = await callClaude(text, intensity, targetRole);
+    // Call AI provider (Claude or Gemini based on MODEL_PROVIDER env)
+    const result = await callAI(text, intensity, targetRole);
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(result));

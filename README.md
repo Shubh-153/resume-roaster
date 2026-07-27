@@ -20,7 +20,7 @@ A web app that gives blunt, constructive feedback on resumes using AI. Roasts we
 
 - **Frontend**: Vanilla JavaScript (ES modules), HTML5, CSS3 - no framework, no build step
 - **Backend**: Node.js with built-in http/https modules (no Express dependency)
-- **AI**: Anthropic Claude API for roast generation
+- **AI**: Multi-provider support (Anthropic Claude or Google Gemini)
 - **File Parsing**: Custom parsers for PDF and DOCX using Node.js built-in zlib
 
 ## Setup
@@ -32,7 +32,9 @@ cd resume-roaster
 
 # Configure environment
 cp .env.example .env
-# Edit .env and add your Anthropic API key
+# Edit .env and add your API key for the chosen provider:
+#   - For Anthropic (default): set ANTHROPIC_API_KEY
+#   - For Google Gemini: set MODEL_PROVIDER=gemini and GEMINI_API_KEY
 
 # Start the server
 npm start
@@ -46,9 +48,27 @@ Open http://localhost:3000 in your browser.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| ANTHROPIC_API_KEY | Your Anthropic API key (required) | - |
+| MODEL_PROVIDER | AI provider to use (`anthropic` or `gemini`) | anthropic |
+| ANTHROPIC_API_KEY | Your Anthropic API key (required for Claude) | - |
 | MODEL | Claude model to use | claude-3-haiku-20240307 |
+| GEMINI_API_KEY | Your Google Gemini API key (required for Gemini) | - |
+| GEMINI_MODEL | Gemini model to use | gemini-2.0-flash |
 | PORT | Server port | 3000 |
+
+## Switching Between AI Providers
+
+By default, Resume Roaster uses Anthropic's Claude. To switch to Google Gemini:
+
+1. Set `MODEL_PROVIDER=gemini` in your `.env` file
+2. Add your Google Gemini API key as `GEMINI_API_KEY`
+3. Optionally set `GEMINI_MODEL` to choose a specific model (defaults to `gemini-2.0-flash`)
+
+To switch back to Anthropic Claude:
+
+1. Set `MODEL_PROVIDER=anthropic` (or remove the variable entirely)
+2. Ensure `ANTHROPIC_API_KEY` is set
+
+Only the API key for the active provider needs to be configured.
 
 ## API Documentation
 
@@ -117,7 +137,9 @@ resume-roaster/
 │   ├── index.js              # HTTP server entry point
 │   ├── routes/roast.js       # POST /api/roast handler
 │   ├── lib/
+│   │   ├── aiProvider.js     # Multi-provider routing (Claude or Gemini)
 │   │   ├── claudeClient.js   # Anthropic API wrapper + JSON validation
+│   │   ├── geminiClient.js   # Google Gemini API wrapper
 │   │   ├── envLoader.js      # .env file parser
 │   │   ├── multipart.js      # Multipart form-data parser
 │   │   ├── parseFile.js      # PDF/DOCX/TXT text extraction
@@ -143,7 +165,7 @@ npm test
 
 - Zero external dependencies: the entire app runs on Node.js built-in modules
 - No build step: serve frontend files directly
-- Privacy-first: resume content is sent only to the Claude API for analysis, never stored
+- Privacy-first: resume content is sent only to the configured AI provider for analysis, never stored
 - Graceful degradation: paste-text path always works even if file parsing has issues
 
 ## License
