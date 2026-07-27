@@ -27,9 +27,15 @@ You MUST return your response as strict JSON matching this exact schema - no mar
   "headline": "<one witty headline summarizing the resume>",
   "sections": [
     {
-      "title": "<section name>",
-      "score": <number 1-100>,
-      "feedback": "<detailed feedback for this section>"
+      "section": "<section name>",
+      "issues": [
+        {
+          "quote": "<exact quote from the resume>",
+          "roast": "<witty roast of this specific issue>",
+          "why": "<explanation of why this is a problem>",
+          "fix": "<concrete rewrite or actionable fix>"
+        }
+      ]
     }
   ],
   "strengths": ["<strength 1>", "<strength 2>", ...],
@@ -43,6 +49,7 @@ Rules:
 - Provide actionable feedback in every section
 - overallScore must be a number from 1 to 100
 - sections should cover: Summary/Objective, Experience, Education, Skills, Formatting
+- Each section must have at least one issue with a direct quote from the resume
 - Include at least 2 strengths, 3 topFixes, and any ATS compatibility flags`;
 }
 
