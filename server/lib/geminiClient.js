@@ -41,13 +41,18 @@ export async function callGemini(resumeText, intensity, targetRole) {
 
 /**
  * Make the actual HTTPS request to the Gemini API.
+ * Retries once automatically for transient failures (empty content, finishReason OTHER).
  * @param {string} model - The Gemini model name
  * @param {string} systemPrompt - The system instruction
  * @param {string} userMessage - The user message content
  * @param {string} apiKey - The Gemini API key
+ * @param {object} [options_] - Optional settings
+ * @param {boolean} [options_.retry=true] - Whether to retry on transient empty responses
  * @returns {Promise<string>} The text content from Gemini's response
  */
-function makeGeminiRequest(model, systemPrompt, userMessage, apiKey) {
+function makeGeminiRequest(model, systemPrompt, userMessage, apiKey, options_ = {}) {
+  const { retry = true } = options_;
+
   return new Promise((resolve, reject) => {
     const requestBody = JSON.stringify({
       system_instruction: {
@@ -61,14 +66,13 @@ function makeGeminiRequest(model, systemPrompt, userMessage, apiKey) {
       ],
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 4096,
-        responseMimeType: 'application/json',
+        maxOutputTokens: 8192,
       },
     });
 
     const path = `/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-    const options = {
+    const reqOptions = {
       hostname: 'generativelanguage.googleapis.com',
       port: 443,
       path,
@@ -79,7 +83,7 @@ function makeGeminiRequest(model, systemPrompt, userMessage, apiKey) {
       },
     };
 
-    const req = https.request(options, (res) => {
+    const req = https.request(reqOptions, (res) => {
       const chunks = [];
       res.on('data', (chunk) => chunks.push(chunk));
       res.on('end', () => {
@@ -122,16 +126,25 @@ function makeGeminiRequest(model, systemPrompt, userMessage, apiKey) {
             return;
           }
 
-          // Handle missing content
-          if (!candidate.content || !candidate.content.parts) {
-            console.error('Gemini API response missing content:', JSON.stringify(parsed));
-            reject(new Error('Gemini returned an empty response. Try again.'));
-            return;
-          }
+          // Handle empty content or finishReason OTHER as transient failure - retry once
+          const isEmptyContent =
+            !candidate.content || !candidate.content.parts || candidate.content.parts.length === 0;
+          const isTransientFinishReason = candidate.finishReason === 'OTHER';
 
-          // Handle empty parts array
-          if (candidate.content.parts.length === 0) {
-            console.error('Gemini API response has empty parts:', JSON.stringify(parsed));
+          if (isEmptyContent || isTransientFinishReason) {
+            if (retry) {
+              console.error(
+                `Gemini transient failure (empty content or finishReason=${candidate.finishReason}), retrying once...`
+              );
+              // Retry the same request once without further retries
+              makeGeminiRequest(model, systemPrompt, userMessage, apiKey, { retry: false }).then(
+                resolve,
+                reject
+              );
+              return;
+            }
+            // Already retried, give up
+            console.error('Gemini API response missing content after retry:', JSON.stringify(parsed));
             reject(new Error('Gemini returned an empty response. Try again.'));
             return;
           }
@@ -141,6 +154,17 @@ function makeGeminiRequest(model, systemPrompt, userMessage, apiKey) {
           if (textPart) {
             resolve(textPart.text);
           } else {
+            // Parts exist but none have text - also treat as transient if retryable
+            if (retry) {
+              console.error(
+                'Gemini response has parts but no text content, retrying once...'
+              );
+              makeGeminiRequest(model, systemPrompt, userMessage, apiKey, { retry: false }).then(
+                resolve,
+                reject
+              );
+              return;
+            }
             console.error('Gemini API response has no text part:', JSON.stringify(parsed));
             reject(new Error('Unexpected Gemini API response format: no text content in parts'));
           }
