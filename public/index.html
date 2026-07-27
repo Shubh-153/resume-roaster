@@ -3,10 +3,145 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Get brutally honest AI feedback on your resume">
+  <meta name="theme-color" content="#1a1a2e">
   <title>Resume Roaster</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>Resume Roaster</h1>
-  <p>Upload your resume to get roasted by AI.</p>
+  <!-- Header -->
+  <header class="header">
+    <h1 class="header__title">&#128293; Resume Roaster</h1>
+    <p class="header__tagline">Get brutally honest feedback on your resume</p>
+  </header>
+
+  <main class="main">
+    <!-- Input Section -->
+    <section id="input-section" class="input-section">
+      <div class="input-card">
+        <!-- Textarea -->
+        <label for="resume-text" class="label">Paste your resume text</label>
+        <textarea
+          id="resume-text"
+          class="textarea"
+          placeholder="Paste your resume content here... Include your work experience, skills, education, and anything else you'd normally put on a resume. The more complete the text, the better the roast."
+          rows="12"
+        ></textarea>
+        <div class="word-count">
+          <span id="word-count-display">0</span> words
+          <span id="word-count-hint" class="word-count__hint">(minimum 50 words required)</span>
+        </div>
+
+        <!-- File Upload Dropzone -->
+        <div class="divider"><span>OR</span></div>
+        <div id="dropzone" class="dropzone">
+          <input type="file" id="file-input" accept=".pdf,.docx,.txt" hidden>
+          <div class="dropzone__content">
+            <span class="dropzone__icon">&#128196;</span>
+            <p class="dropzone__text">Drag & drop your resume here, or <span class="dropzone__link">click to browse</span></p>
+            <p class="dropzone__formats">Accepts .pdf, .docx, .txt</p>
+          </div>
+          <div id="dropzone-file" class="dropzone__file" hidden>
+            <span class="dropzone__file-icon">&#128206;</span>
+            <span id="dropzone-filename" class="dropzone__filename"></span>
+            <button id="dropzone-clear" class="dropzone__clear" type="button" aria-label="Remove file">&times;</button>
+          </div>
+        </div>
+
+        <!-- Target Role -->
+        <label for="target-role" class="label label--optional">Target Role <span class="label__optional">(optional)</span></label>
+        <input
+          type="text"
+          id="target-role"
+          class="input"
+          placeholder="e.g., Frontend Developer, Data Analyst"
+        >
+
+        <!-- Intensity Toggle -->
+        <label class="label">Roast Intensity</label>
+        <div class="intensity-toggle" role="group" aria-label="Roast intensity">
+          <button type="button" class="intensity-btn" data-intensity="mild">&#127790; Mild</button>
+          <button type="button" class="intensity-btn intensity-btn--active" data-intensity="medium">&#128293; Medium</button>
+          <button type="button" class="intensity-btn" data-intensity="nuclear">&#9762;&#65039; Nuclear</button>
+        </div>
+
+        <!-- CTA Button -->
+        <button id="roast-btn" class="roast-btn" disabled>
+          &#128293; Roast My Resume
+        </button>
+      </div>
+    </section>
+
+    <!-- Loading Section -->
+    <section id="loading-section" class="loading-section" hidden>
+      <div class="loading-card">
+        <div class="loading__spinner">&#128293;</div>
+        <p id="loading-message" class="loading__message">Sharpening the red pen...</p>
+      </div>
+    </section>
+
+    <!-- Results Section -->
+    <section id="results-section" class="results-section" hidden>
+      <div class="results-card">
+        <!-- Score -->
+        <div class="score-display">
+          <div class="score-display__number">
+            <span id="score-value">0</span><span class="score-display__max">/100</span>
+          </div>
+          <p class="score-display__label">Resume Score</p>
+        </div>
+
+        <!-- Headline -->
+        <p id="result-headline" class="result-headline"></p>
+
+        <!-- Top 3 Fixes -->
+        <div class="top-fixes">
+          <h2 class="top-fixes__title">&#128736; Top 3 Fixes</h2>
+          <ol id="top-fixes-list" class="top-fixes__list"></ol>
+        </div>
+
+        <!-- Sections -->
+        <div id="sections-container" class="sections-container"></div>
+
+        <!-- Strengths -->
+        <div id="strengths-panel" class="strengths-panel" hidden>
+          <h2 class="strengths-panel__title">&#9989; Strengths</h2>
+          <ul id="strengths-list" class="strengths-panel__list"></ul>
+        </div>
+
+        <!-- ATS Flags -->
+        <div id="ats-panel" class="ats-panel" hidden>
+          <h2 class="ats-panel__title">&#9888;&#65039; ATS Flags</h2>
+          <ul id="ats-list" class="ats-panel__list"></ul>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="result-actions">
+          <button id="export-btn" class="action-btn action-btn--export">&#128196; Export as .md</button>
+          <button id="share-btn" class="action-btn action-btn--share">&#128260; Share Roast Card</button>
+          <button id="new-roast-btn" class="action-btn action-btn--new">&#128260; Roast Another</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Error Section -->
+    <section id="error-section" class="error-section" hidden>
+      <div class="error-card">
+        <span class="error-card__icon">&#128561;</span>
+        <p id="error-message" class="error-card__message"></p>
+        <button id="error-retry-btn" class="action-btn action-btn--new">Try Again</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" hidden></div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>Resume Roaster &mdash; AI-powered resume feedback</p>
+  </footer>
+
+  <script type="module" src="app.js"></script>
 </body>
 </html>
