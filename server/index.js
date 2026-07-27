@@ -1,6 +1,6 @@
 import { createServer } from 'http';
 import { readFileSync, existsSync } from 'fs';
-import { join, extname } from 'path';
+import { join, extname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
@@ -47,6 +47,9 @@ router.get('/api/health', (req, res) => {
 // POST /api/roast (with rate limiting)
 router.post('/api/roast', rateLimiter.middleware(), handleRoast);
 
+// Resolved public directory path for security checks
+const PUBLIC_DIR = resolve(PROJECT_ROOT, 'public');
+
 /**
  * Serve static files from the public/ directory.
  * @param {import('http').IncomingMessage} req
@@ -59,14 +62,25 @@ function serveStatic(req, res, pathname) {
     pathname = '/index.html';
   }
 
-  // Security: prevent path traversal
-  const safePath = pathname.replace(/\.\./g, '');
-  const filePath = join(PROJECT_ROOT, 'public', safePath);
+  // Security: resolve the full path and verify it is inside the public directory
+  const filePath = resolve(PUBLIC_DIR, pathname.replace(/^\/+/, ''));
+  if (!filePath.startsWith(PUBLIC_DIR + '/') && filePath !== PUBLIC_DIR) {
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Forbidden' }));
+    return;
+  }
 
   // Check file exists
   if (!existsSync(filePath)) {
+    // For /api/* paths that were not matched by router, return JSON 404
+    if (pathname.startsWith('/api/')) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Not found' }));
+      return;
+    }
+
     // Try serving index.html as fallback for SPA routing
-    const indexPath = join(PROJECT_ROOT, 'public', 'index.html');
+    const indexPath = join(PUBLIC_DIR, 'index.html');
     if (existsSync(indexPath)) {
       try {
         const content = readFileSync(indexPath);

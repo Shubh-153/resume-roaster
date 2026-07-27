@@ -6,7 +6,7 @@ import https from 'https';
  * @param {string} [targetRole] - Target job role for context
  * @returns {string}
  */
-function getSystemPrompt(intensity, targetRole) {
+export function getSystemPrompt(intensity, targetRole) {
   const intensityPrompts = {
     mild: `You are a helpful career advisor giving constructive, gentle feedback on a resume. Be encouraging but honest about areas for improvement. Use a friendly, supportive tone.`,
     medium: `You are a brutally honest hiring manager who has seen thousands of resumes. Give direct, no-nonsense feedback. Be witty and slightly sarcastic but ultimately helpful. Don't sugarcoat problems.`,
@@ -96,7 +96,7 @@ export async function callClaude(resumeText, intensity, targetRole) {
  * @param {string} text
  * @returns {object}
  */
-function extractAndParseJson(text) {
+export function extractAndParseJson(text) {
   // Try direct JSON parse first
   try {
     return JSON.parse(text);
@@ -122,7 +122,7 @@ function extractAndParseJson(text) {
  * Validate that the response has all required fields.
  * @param {object} response
  */
-function validateResponse(response) {
+export function validateResponse(response) {
   const requiredFields = ['overallScore', 'headline', 'sections', 'strengths', 'topFixes', 'atsFlags'];
   const missing = requiredFields.filter((field) => !(field in response));
   if (missing.length > 0) {

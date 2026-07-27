@@ -1,5 +1,8 @@
 import { parse as parseUrl } from 'url';
 
+// Maximum body size: 10MB
+const MAX_BODY_SIZE = 10 * 1024 * 1024;
+
 /**
  * Minimal HTTP router for routing requests to handlers.
  */
@@ -29,12 +32,22 @@ export class Router {
   /**
    * Parse the JSON body from a request stream.
    * @param {import('http').IncomingMessage} req
+   * @param {number} [maxSize] - Maximum body size in bytes (default: 10MB)
    * @returns {Promise<any>}
    */
-  static parseJsonBody(req) {
+  static parseJsonBody(req, maxSize = MAX_BODY_SIZE) {
     return new Promise((resolve, reject) => {
       const chunks = [];
-      req.on('data', (chunk) => chunks.push(chunk));
+      let totalSize = 0;
+      req.on('data', (chunk) => {
+        totalSize += chunk.length;
+        if (totalSize > maxSize) {
+          req.destroy();
+          reject(Object.assign(new Error('Request body too large'), { statusCode: 413 }));
+          return;
+        }
+        chunks.push(chunk);
+      });
       req.on('end', () => {
         const raw = Buffer.concat(chunks).toString('utf-8');
         if (!raw) {
@@ -54,12 +67,22 @@ export class Router {
   /**
    * Parse the raw body from a request stream as a Buffer.
    * @param {import('http').IncomingMessage} req
+   * @param {number} [maxSize] - Maximum body size in bytes (default: 10MB)
    * @returns {Promise<Buffer>}
    */
-  static parseRawBody(req) {
+  static parseRawBody(req, maxSize = MAX_BODY_SIZE) {
     return new Promise((resolve, reject) => {
       const chunks = [];
-      req.on('data', (chunk) => chunks.push(chunk));
+      let totalSize = 0;
+      req.on('data', (chunk) => {
+        totalSize += chunk.length;
+        if (totalSize > maxSize) {
+          req.destroy();
+          reject(Object.assign(new Error('Request body too large'), { statusCode: 413 }));
+          return;
+        }
+        chunks.push(chunk);
+      });
       req.on('end', () => resolve(Buffer.concat(chunks)));
       req.on('error', reject);
     });

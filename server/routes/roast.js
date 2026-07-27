@@ -35,6 +35,17 @@ export async function handleRoast(req, res) {
       if (files.length > 0) {
         const file = files[0];
         text = await parseFile(file.data, file.contentType, file.filename);
+
+        // Check if file was uploaded but parsing yielded no usable text
+        if (!text || !text.trim()) {
+          res.writeHead(422, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              error: 'Could not extract text from the uploaded file. Try pasting your resume text directly.',
+            })
+          );
+          return;
+        }
       } else if (fields.text) {
         text = fields.text;
       }
@@ -77,6 +88,11 @@ export async function handleRoast(req, res) {
     res.end(JSON.stringify(result));
   } catch (err) {
     console.error('Error in /api/roast:', err);
+    if (err.statusCode === 413) {
+      res.writeHead(413, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Request body too large' }));
+      return;
+    }
     const statusCode = err.message.includes('not configured') ? 503 : 500;
     res.writeHead(statusCode, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: err.message }));

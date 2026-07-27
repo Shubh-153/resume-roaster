@@ -67,7 +67,7 @@ export class RateLimiter {
    */
   middleware() {
     return (req, res, next) => {
-      const ip = req.socket.remoteAddress || req.headers['x-forwarded-for'] || 'unknown';
+      const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
       if (!this.consume(ip)) {
         res.writeHead(429, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Too many requests. Please try again later.' }));
