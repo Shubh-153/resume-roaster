@@ -2,7 +2,7 @@
   "id": "FEAT-003",
   "type": "docs",
   "description": "Create comprehensive README.md with project overview, setup instructions, architecture explanation, and usage guide. Ensure all final polish and integration between frontend and backend is complete.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Create README.md with: Project title and description, features list, tech stack explanation (Node.js built-in modules only, no external dependencies), setup instructions (clone, copy .env.example to .env, add ANTHROPIC_API_KEY, run npm start), usage guide, API documentation for POST /api/roast and GET /api/health, roast intensity levels explanation, file format support notes, architecture overview, environment variables documentation",
     "Final integration check: verify the full flow works end-to-end by reviewing that frontend POST matches backend expectations for both JSON and multipart requests, verify error responses are handled by frontend, verify static file serving works for all public/ assets"
@@ -18,5 +18,5 @@
     "All referenced files in README actually exist in the project"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Fixed critical integration mismatch: Claude prompt in claudeClient.js was requesting response schema with {title, score, feedback} per section but frontend expected {section, issues: [{quote, roast, why, fix}]}. Updated Claude prompt to match frontend expectations. All 29 existing tests pass. Test runner requires glob pattern 'server/tests/*.test.js' instead of directory path. All files referenced in README verified to exist."
 }
