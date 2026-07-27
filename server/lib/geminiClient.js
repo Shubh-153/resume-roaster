@@ -62,6 +62,7 @@ function makeGeminiRequest(model, systemPrompt, userMessage, apiKey) {
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 4096,
+        responseMimeType: 'application/json',
       },
     });
 
@@ -91,19 +92,60 @@ function makeGeminiRequest(model, systemPrompt, userMessage, apiKey) {
 
         try {
           const parsed = JSON.parse(body);
-          if (
-            parsed.candidates &&
-            parsed.candidates.length > 0 &&
-            parsed.candidates[0].content &&
-            parsed.candidates[0].content.parts &&
-            parsed.candidates[0].content.parts.length > 0 &&
-            parsed.candidates[0].content.parts[0].text
-          ) {
-            resolve(parsed.candidates[0].content.parts[0].text);
+
+          // Handle promptFeedback block (no candidates at all)
+          if (parsed.promptFeedback && parsed.promptFeedback.blockReason) {
+            reject(
+              new Error(
+                `Gemini blocked this request due to safety filters (${parsed.promptFeedback.blockReason}). Try a different resume or lower intensity.`
+              )
+            );
+            return;
+          }
+
+          // Handle missing or empty candidates array
+          if (!parsed.candidates || parsed.candidates.length === 0) {
+            console.error('Gemini API response missing candidates:', JSON.stringify(parsed));
+            reject(new Error('Gemini returned no candidates. Try a different resume or lower intensity.'));
+            return;
+          }
+
+          const candidate = parsed.candidates[0];
+
+          // Handle safety-blocked candidate (finishReason SAFETY with no content)
+          if (candidate.finishReason === 'SAFETY' && !candidate.content) {
+            reject(
+              new Error(
+                'Gemini blocked this request due to safety filters. Try a different resume or lower intensity.'
+              )
+            );
+            return;
+          }
+
+          // Handle missing content
+          if (!candidate.content || !candidate.content.parts) {
+            console.error('Gemini API response missing content:', JSON.stringify(parsed));
+            reject(new Error('Gemini returned an empty response. Try again.'));
+            return;
+          }
+
+          // Handle empty parts array
+          if (candidate.content.parts.length === 0) {
+            console.error('Gemini API response has empty parts:', JSON.stringify(parsed));
+            reject(new Error('Gemini returned an empty response. Try again.'));
+            return;
+          }
+
+          // Extract text from parts (skip non-text parts like functionCall)
+          const textPart = candidate.content.parts.find((part) => typeof part.text === 'string');
+          if (textPart) {
+            resolve(textPart.text);
           } else {
-            reject(new Error('Unexpected Gemini API response format'));
+            console.error('Gemini API response has no text part:', JSON.stringify(parsed));
+            reject(new Error('Unexpected Gemini API response format: no text content in parts'));
           }
         } catch (err) {
+          console.error('Failed to parse Gemini API response body:', body);
           reject(new Error(`Failed to parse Gemini API response: ${err.message}`));
         }
       });
