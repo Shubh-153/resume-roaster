@@ -1,7 +1,7 @@
 {
   "task_id": "task-resume-roaster",
   "task_description": "Build Resume Roaster - a web app that gives blunt, constructive feedback on resumes. User uploads or pastes resume, app roasts it with specific feedback following Roast/Why/Fix pattern. Stack: vanilla JS frontend + Node.js backend (built-in modules only due to network constraints) + Anthropic Claude API.",
-  "status": "in_progress",
+  "status": "completed",
   "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
   "blocked_reason": null,
   "verification": {
