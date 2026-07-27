@@ -92,6 +92,117 @@ export async function callClaude(resumeText, intensity, targetRole) {
 }
 
 /**
+ * Attempt to repair common JSON issues from LLM output.
+ * Handles trailing commas, unescaped control characters, and truncated JSON.
+ * @param {string} text - Raw JSON string that failed to parse
+ * @returns {string} Repaired JSON string
+ */
+export function repairJson(text) {
+  // Remove any text before the first { or [ and after the last } or ]
+  let startBrace = text.indexOf('{');
+  let startBracket = text.indexOf('[');
+  let start;
+  if (startBrace === -1 && startBracket === -1) return text;
+  if (startBrace === -1) start = startBracket;
+  else if (startBracket === -1) start = startBrace;
+  else start = Math.min(startBrace, startBracket);
+
+  let endBrace = text.lastIndexOf('}');
+  let endBracket = text.lastIndexOf(']');
+  let end = Math.max(endBrace, endBracket);
+  if (end === -1) end = text.length - 1;
+
+  let json = text.slice(start, end + 1);
+
+  // Fix unescaped control characters ONLY inside string values
+  let repaired = '';
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < json.length; i++) {
+    const ch = json[i];
+    const code = json.charCodeAt(i);
+
+    if (escaped) {
+      escaped = false;
+      repaired += ch;
+      continue;
+    }
+
+    if (ch === '\\' && inString) {
+      escaped = true;
+      repaired += ch;
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = !inString;
+      repaired += ch;
+      continue;
+    }
+
+    if (inString && code < 0x20) {
+      // Control character inside a string - escape it
+      if (ch === '\n') { repaired += '\\n'; continue; }
+      if (ch === '\r') { repaired += '\\r'; continue; }
+      if (ch === '\t') { repaired += '\\t'; continue; }
+      // Remove other control characters
+      continue;
+    }
+
+    repaired += ch;
+  }
+  json = repaired;
+
+  // Remove trailing commas before ] or }
+  json = json.replace(/,\s*([}\]])/g, '$1');
+
+  // Track open structures in order for truncation repair
+  const stack = [];
+  inString = false;
+  escaped = false;
+
+  for (let i = 0; i < json.length; i++) {
+    const ch = json[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === '\\' && inString) {
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+
+    if (ch === '{') stack.push('}');
+    else if (ch === '[') stack.push(']');
+    else if (ch === '}' || ch === ']') stack.pop();
+  }
+
+  // If we ended inside a string, close it
+  if (inString) {
+    json += '"';
+  }
+
+  // If JSON is truncated, log a warning and close open structures in reverse order
+  if (stack.length > 0) {
+    console.warn('[JSON repair] Response appears truncated - closing open brackets/braces');
+    // Close in reverse order (most recently opened first)
+    while (stack.length > 0) {
+      json += stack.pop();
+    }
+  }
+
+  // Remove trailing commas again after repair (closing brackets may now follow commas)
+  json = json.replace(/,\s*([}\]])/g, '$1');
+
+  return json;
+}
+
+/**
  * Extract JSON from a response string, handling potential markdown fences.
  * @param {string} text
  * @returns {object}
@@ -101,19 +212,45 @@ export function extractAndParseJson(text) {
   try {
     return JSON.parse(text);
   } catch {
-    // Try removing markdown code fences
-    const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (fenceMatch) {
+    // noop - try other approaches
+  }
+
+  // Try removing markdown code fences
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) {
+    try {
       return JSON.parse(fenceMatch[1].trim());
+    } catch {
+      // Try repairing the fenced content
+      try {
+        return JSON.parse(repairJson(fenceMatch[1].trim()));
+      } catch {
+        // noop - continue to other approaches
+      }
     }
+  }
 
-    // Try finding JSON object in the text
-    const jsonStart = text.indexOf('{');
-    const jsonEnd = text.lastIndexOf('}');
-    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
-      return JSON.parse(text.slice(jsonStart, jsonEnd + 1));
+  // Try finding JSON object in the text
+  const jsonStart = text.indexOf('{');
+  const jsonEnd = text.lastIndexOf('}');
+  if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+    const extracted = text.slice(jsonStart, jsonEnd + 1);
+    try {
+      return JSON.parse(extracted);
+    } catch {
+      // Try repairing the extracted JSON
+      try {
+        return JSON.parse(repairJson(extracted));
+      } catch {
+        // noop - continue
+      }
     }
+  }
 
+  // Last resort: try repairJson on the full text
+  try {
+    return JSON.parse(repairJson(text));
+  } catch {
     throw new Error('No valid JSON found in response');
   }
 }

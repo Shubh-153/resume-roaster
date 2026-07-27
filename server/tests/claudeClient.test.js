@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { extractAndParseJson, validateResponse, getSystemPrompt } from '../lib/claudeClient.js';
+import { extractAndParseJson, validateResponse, getSystemPrompt, repairJson } from '../lib/claudeClient.js';
 
 describe('extractAndParseJson', () => {
   it('should parse direct JSON', () => {
@@ -146,5 +146,111 @@ describe('getSystemPrompt', () => {
     assert.ok(prompt.includes('strengths'));
     assert.ok(prompt.includes('topFixes'));
     assert.ok(prompt.includes('atsFlags'));
+  });
+});
+
+describe('repairJson', () => {
+  it('should remove trailing commas before closing brackets', () => {
+    const input = '{"items": [1, 2, 3,], "name": "test",}';
+    const result = repairJson(input);
+    const parsed = JSON.parse(result);
+    assert.deepStrictEqual(parsed.items, [1, 2, 3]);
+    assert.strictEqual(parsed.name, 'test');
+  });
+
+  it('should remove trailing commas with whitespace', () => {
+    const input = '{"items": [1, 2, 3 , \n], "name": "test" ,\n}';
+    const result = repairJson(input);
+    const parsed = JSON.parse(result);
+    assert.deepStrictEqual(parsed.items, [1, 2, 3]);
+  });
+
+  it('should close unclosed braces for truncated JSON', () => {
+    const input = '{"overallScore": 75, "sections": [{"section": "Experience"';
+    const result = repairJson(input);
+    const parsed = JSON.parse(result);
+    assert.strictEqual(parsed.overallScore, 75);
+  });
+
+  it('should close unclosed brackets for truncated JSON', () => {
+    const input = '{"items": [1, 2, 3';
+    const result = repairJson(input);
+    const parsed = JSON.parse(result);
+    assert.deepStrictEqual(parsed.items, [1, 2, 3]);
+  });
+
+  it('should handle unescaped newlines inside string values', () => {
+    const input = '{"text": "line1\nline2"}';
+    const result = repairJson(input);
+    const parsed = JSON.parse(result);
+    assert.strictEqual(parsed.text, 'line1\nline2');
+  });
+
+  it('should remove text before the first { and after the last }', () => {
+    const input = 'Here is your JSON:\n{"score": 80}\nHope this helps!';
+    const result = repairJson(input);
+    const parsed = JSON.parse(result);
+    assert.strictEqual(parsed.score, 80);
+  });
+
+  it('should handle control characters by removing them', () => {
+    const input = '{"name": "test\x01value"}';
+    const result = repairJson(input);
+    const parsed = JSON.parse(result);
+    assert.strictEqual(parsed.name, 'testvalue');
+  });
+
+  it('should preserve tabs as escaped sequences', () => {
+    const input = '{"name": "col1\tcol2"}';
+    const result = repairJson(input);
+    const parsed = JSON.parse(result);
+    assert.strictEqual(parsed.name, 'col1\tcol2');
+  });
+
+  it('should handle deeply truncated JSON with multiple nesting levels', () => {
+    const input = '{"a": {"b": [{"c": "val"';
+    const result = repairJson(input);
+    const parsed = JSON.parse(result);
+    assert.strictEqual(parsed.a.b[0].c, 'val');
+  });
+
+  it('should close unclosed strings in truncated JSON', () => {
+    const input = '{"name": "hello';
+    const result = repairJson(input);
+    const parsed = JSON.parse(result);
+    assert.strictEqual(parsed.name, 'hello');
+  });
+});
+
+describe('extractAndParseJson with repair', () => {
+  it('should parse JSON with trailing commas via repair', () => {
+    const text = '{"overallScore": 75, "headline": "Test", "items": [1, 2,]}';
+    const result = extractAndParseJson(text);
+    assert.strictEqual(result.overallScore, 75);
+    assert.deepStrictEqual(result.items, [1, 2]);
+  });
+
+  it('should parse truncated JSON from markdown fences via repair', () => {
+    const text = '```json\n{"overallScore": 60, "headline": "Oops", "sections": [{"section": "Exp"\n```';
+    const result = extractAndParseJson(text);
+    assert.strictEqual(result.overallScore, 60);
+  });
+
+  it('should parse JSON with trailing commas embedded in text', () => {
+    const text = 'Here is the result:\n{"score": 50, "items": ["a", "b",],}\nDone!';
+    const result = extractAndParseJson(text);
+    assert.strictEqual(result.score, 50);
+    assert.deepStrictEqual(result.items, ['a', 'b']);
+  });
+
+  it('should still throw when no JSON structure exists at all', () => {
+    const text = 'This is just plain text with no JSON at all.';
+    assert.throws(() => extractAndParseJson(text), /No valid JSON found/);
+  });
+
+  it('should parse JSON with unescaped newlines in values', () => {
+    const text = '{"roast": "Your resume\nis bad\nand you should feel bad"}';
+    const result = extractAndParseJson(text);
+    assert.strictEqual(result.roast, 'Your resume\nis bad\nand you should feel bad');
   });
 });
