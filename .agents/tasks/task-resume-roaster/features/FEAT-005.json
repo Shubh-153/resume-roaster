@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-005",
+  "type": "fix",
+  "description": "Improve PDF and DOCX parsers to handle real-world documents that currently cause 422 errors. PDF parser needs hex strings, nested parens, octal escapes, Unicode, more text operators. DOCX parser needs data descriptor support, paragraph breaks, fallback paths. Both need a raw text extraction fallback.",
+  "status": "completed",
+  "steps": [
+    "Rewrite PDF parser to handle: hex strings (<AABB>), nested parentheses, octal escapes, UTF-16BE Unicode, CIDFont hex codes, more text operators (Td, TD, T*, ', \"), kerning in TJ arrays",
+    "Rewrite DOCX parser to handle: data descriptors (bit 3 flag), central directory fallback, paragraph breaks, line breaks, xml:space=preserve, fallback document paths",
+    "Add raw text extraction fallback for both PDF and DOCX when structured parsing returns empty",
+    "Ensure all existing tests pass"
+  ],
+  "acceptance_criteria": [
+    "PDF parser extracts text from hex strings like <48656C6C6F>",
+    "PDF parser handles nested parentheses in strings",
+    "PDF parser handles octal escape sequences like \\101",
+    "PDF parser handles UTF-16BE encoded hex strings (FEFF BOM)",
+    "DOCX parser handles ZIP data descriptors (bit 3 flag)",
+    "DOCX parser preserves paragraph structure",
+    "Raw text fallback extracts visible ASCII when structured parsing fails",
+    "All existing tests in server/tests/parseFile.test.js pass",
+    "Parser returns meaningful text for typical resume PDFs"
+  ],
+  "verification": [
+    "unset NODE_OPTIONS && node --test server/tests/parseFile.test.js"
+  ],
+  "blocked_reason": null,
+  "findings": "All 85 tests pass (79 existing + 6 new). The key fix was ensuring the raw text fallback only triggers when structured parsing returns completely empty, not when it returns short but correct text. The central directory approach for ZIP parsing is more reliable than sequential local headers because it always has accurate compressed/uncompressed sizes."
+}

@@ -52,6 +52,83 @@ describe('parseFile', () => {
       const result = await parseFile(buffer, 'application/pdf', 'test.pdf');
       assert.ok(result.includes('Hello World'), `Expected "Hello World" in result: "${result}"`);
     });
+
+    it('should extract text from hex strings', async () => {
+      // <48656C6C6F> is "Hello" in hex
+      const pdfContent =
+        '%PDF-1.4\n' +
+        '1 0 obj\n<< /Length 50 >>\nstream\n' +
+        'BT\n/F1 12 Tf\n<48656C6C6F> Tj\nET\n' +
+        'endstream\nendobj\n';
+
+      const buffer = Buffer.from(pdfContent, 'binary');
+      const result = await parseFile(buffer, 'application/pdf', 'test.pdf');
+      assert.ok(result.includes('Hello'), `Expected "Hello" in result: "${result}"`);
+    });
+
+    it('should handle nested parentheses in PDF strings', async () => {
+      const pdfContent =
+        '%PDF-1.4\n' +
+        '1 0 obj\n<< /Length 80 >>\nstream\n' +
+        'BT\n/F1 12 Tf\n(Text \\(with parens\\) inside) Tj\nET\n' +
+        'endstream\nendobj\n';
+
+      const buffer = Buffer.from(pdfContent, 'binary');
+      const result = await parseFile(buffer, 'application/pdf', 'test.pdf');
+      assert.ok(result.includes('Text (with parens) inside'), `Expected nested parens text in result: "${result}"`);
+    });
+
+    it('should handle octal escape sequences in PDF strings', async () => {
+      // \101 is octal for 'A', \102 is 'B', \103 is 'C'
+      const pdfContent =
+        '%PDF-1.4\n' +
+        '1 0 obj\n<< /Length 60 >>\nstream\n' +
+        'BT\n/F1 12 Tf\n(\\101\\102\\103) Tj\nET\n' +
+        'endstream\nendobj\n';
+
+      const buffer = Buffer.from(pdfContent, 'binary');
+      const result = await parseFile(buffer, 'application/pdf', 'test.pdf');
+      assert.ok(result.includes('ABC'), `Expected "ABC" from octal escapes in result: "${result}"`);
+    });
+
+    it('should handle TJ arrays with kerning numbers', async () => {
+      const pdfContent =
+        '%PDF-1.4\n' +
+        '1 0 obj\n<< /Length 80 >>\nstream\n' +
+        'BT\n/F1 12 Tf\n[(Hello) -50 (World)] TJ\nET\n' +
+        'endstream\nendobj\n';
+
+      const buffer = Buffer.from(pdfContent, 'binary');
+      const result = await parseFile(buffer, 'application/pdf', 'test.pdf');
+      assert.ok(result.includes('Hello'), `Expected "Hello" in TJ array result: "${result}"`);
+      assert.ok(result.includes('World'), `Expected "World" in TJ array result: "${result}"`);
+    });
+
+    it('should handle multiple text operators and line positioning', async () => {
+      const pdfContent =
+        '%PDF-1.4\n' +
+        '1 0 obj\n<< /Length 120 >>\nstream\n' +
+        'BT\n/F1 12 Tf\n0 700 Td\n(First Line) Tj\n0 -14 Td\n(Second Line) Tj\nET\n' +
+        'endstream\nendobj\n';
+
+      const buffer = Buffer.from(pdfContent, 'binary');
+      const result = await parseFile(buffer, 'application/pdf', 'test.pdf');
+      assert.ok(result.includes('First Line'), `Expected "First Line" in result: "${result}"`);
+      assert.ok(result.includes('Second Line'), `Expected "Second Line" in result: "${result}"`);
+    });
+
+    it('should handle UTF-16BE hex strings with BOM', async () => {
+      // FEFF is BOM, 0048=H, 0065=e, 006C=l, 006C=l, 006F=o
+      const pdfContent =
+        '%PDF-1.4\n' +
+        '1 0 obj\n<< /Length 80 >>\nstream\n' +
+        'BT\n/F1 12 Tf\n<FEFF00480065006C006C006F> Tj\nET\n' +
+        'endstream\nendobj\n';
+
+      const buffer = Buffer.from(pdfContent, 'binary');
+      const result = await parseFile(buffer, 'application/pdf', 'test.pdf');
+      assert.ok(result.includes('Hello'), `Expected "Hello" from UTF-16BE hex in result: "${result}"`);
+    });
   });
 
   describe('.docx files', () => {
