@@ -1,0 +1,33 @@
+{
+  "id": "FEAT-004",
+  "type": "feat",
+  "description": "Add OpenRouter as a third AI provider alongside Anthropic and Gemini, supporting 100+ models through a single API key.",
+  "status": "completed",
+  "steps": [
+    "Create server/lib/openrouterClient.js with OpenRouter API integration using built-in https module",
+    "Update server/lib/aiProvider.js to support MODEL_PROVIDER=openrouter",
+    "Update .env.example with OpenRouter configuration variables",
+    "Update README.md to document OpenRouter as a provider option",
+    "Add tests in server/tests/aiProvider.test.js for openrouter provider path",
+    "Verify all tests pass"
+  ],
+  "acceptance_criteria": [
+    "openrouterClient.js uses the OpenRouter REST API at https://openrouter.ai/api/v1/chat/completions",
+    "API key sent as Bearer token in Authorization header",
+    "Uses same system prompt logic from getSystemPrompt()",
+    "Uses OpenAI-compatible chat completions format",
+    "Extracts text from choices[0].message.content",
+    "Has retry-on-JSON-parse-failure logic",
+    "Validates response with validateResponse()",
+    "Uses Node.js built-in https module only",
+    "aiProvider.js supports MODEL_PROVIDER=openrouter",
+    "Error message lists all three providers",
+    "All existing tests pass plus new openrouter tests"
+  ],
+  "verification": [
+    "unset NODE_OPTIONS && node --check server/lib/openrouterClient.js",
+    "unset NODE_OPTIONS && node --test server/tests/aiProvider.test.js"
+  ],
+  "blocked_reason": null,
+  "findings": "All 79 tests pass (3 new OpenRouter tests added). No external dependencies used. OpenRouter client follows the same pattern as geminiClient.js (imports shared utilities from claudeClient.js). The unsupported provider error message now lists all three options."
+}
