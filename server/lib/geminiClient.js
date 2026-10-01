@@ -15,7 +15,7 @@ export async function callGemini(resumeText, intensity, targetRole) {
   }
 
   const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
-  const fallbacks = (process.env.GEMINI_FALLBACK_MODELS || 'gemini-2.5-flash')
+  const fallbacks = (process.env.GEMINI_FALLBACK_MODELS || 'gemini-3.6-flash,gemini-3.5-flash-lite')
     .split(',').map((m) => m.trim()).filter((m) => m && m !== model);
   const models = [model, ...fallbacks];
   const systemPrompt = getSystemPrompt(intensity, targetRole);
@@ -42,32 +42,33 @@ export async function callGemini(resumeText, intensity, targetRole) {
   return parsed;
 }
 
-// Overloaded (503), rate-limited (429) or transient server errors are worth retrying.
+// Overloaded (503), rate-limited (429) or transient server errors: try the next model.
 const RETRYABLE_STATUS = new Set([429, 500, 503, 504]);
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * Try each model in order, retrying overload errors once with a short backoff
- * before moving on to the next model. Stays well inside Vercel's 60s limit.
+ * Try each model in order and return the first answer. An overloaded model is
+ * skipped straight away rather than retried: a single slow model can use most
+ * of Vercel's 60s limit, so waiting on it again risks a timeout. A fallback
+ * that no longer exists (404, e.g. a retired model) is skipped too.
  * @param {string[]} models - Primary model first, then fallbacks
  * @returns {Promise<string>} The text content from the first model that answers
  */
-export async function requestWithFallback(models, systemPrompt, userMessage, apiKey, { backoffMs = 1500 } = {}) {
+export async function requestWithFallback(models, systemPrompt, userMessage, apiKey) {
+  let busyStatus = null;
   let lastErr;
-  for (const model of models) {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        return await makeGeminiRequest(model, systemPrompt, userMessage, apiKey);
-      } catch (err) {
-        lastErr = err;
-        if (!RETRYABLE_STATUS.has(err.status)) throw err;
-        console.error(`Gemini ${model} returned ${err.status} (attempt ${attempt + 1}), retrying...`);
-        if (attempt === 0) await sleep(backoffMs);
-      }
+  for (const [i, model] of models.entries()) {
+    try {
+      return await makeGeminiRequest(model, systemPrompt, userMessage, apiKey);
+    } catch (err) {
+      lastErr = err;
+      if (RETRYABLE_STATUS.has(err.status)) busyStatus = err.status;
+      else if (!(i > 0 && err.status === 404)) throw err;
+      console.error(`Gemini ${model} returned ${err.status}, trying next model...`);
     }
   }
+  if (busyStatus === null) throw lastErr;
   const busy = new Error('The AI is very busy right now. Please try again in a minute.');
-  busy.status = lastErr.status;
+  busy.status = busyStatus;
   throw busy;
 }
 
