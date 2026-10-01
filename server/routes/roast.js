@@ -93,7 +93,8 @@ export async function handleRoast(req, res) {
       res.end(JSON.stringify({ error: 'Request body too large' }));
       return;
     }
-    const statusCode = err.message.includes('not configured') ? 503 : 500;
+    // Pass through upstream overload/rate-limit so the client sees "busy", not a crash
+    const statusCode = err.message.includes('not configured') || [429, 503].includes(err.status) ? 503 : 500;
     res.writeHead(statusCode, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: err.message }));
   }

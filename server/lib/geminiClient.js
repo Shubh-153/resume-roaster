@@ -15,9 +15,12 @@ export async function callGemini(resumeText, intensity, targetRole) {
   }
 
   const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+  const fallbacks = (process.env.GEMINI_FALLBACK_MODELS || 'gemini-2.5-flash')
+    .split(',').map((m) => m.trim()).filter((m) => m && m !== model);
+  const models = [model, ...fallbacks];
   const systemPrompt = getSystemPrompt(intensity, targetRole);
 
-  let response = await makeGeminiRequest(model, systemPrompt, resumeText, apiKey);
+  let response = await requestWithFallback(models, systemPrompt, resumeText, apiKey);
 
   // Try to parse JSON from Gemini's response
   let parsed;
@@ -26,7 +29,7 @@ export async function callGemini(resumeText, intensity, targetRole) {
   } catch {
     // Retry once with explicit JSON instruction
     const retryMessage = `${resumeText}\n\nIMPORTANT: return valid JSON only, no markdown fences`;
-    response = await makeGeminiRequest(model, systemPrompt, retryMessage, apiKey);
+    response = await requestWithFallback(models, systemPrompt, retryMessage, apiKey);
     try {
       parsed = extractAndParseJson(response);
     } catch (err) {
@@ -37,6 +40,35 @@ export async function callGemini(resumeText, intensity, targetRole) {
   // Validate required fields
   validateResponse(parsed);
   return parsed;
+}
+
+// Overloaded (503), rate-limited (429) or transient server errors are worth retrying.
+const RETRYABLE_STATUS = new Set([429, 500, 503, 504]);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Try each model in order, retrying overload errors once with a short backoff
+ * before moving on to the next model. Stays well inside Vercel's 60s limit.
+ * @param {string[]} models - Primary model first, then fallbacks
+ * @returns {Promise<string>} The text content from the first model that answers
+ */
+export async function requestWithFallback(models, systemPrompt, userMessage, apiKey, { backoffMs = 1500 } = {}) {
+  let lastErr;
+  for (const model of models) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await makeGeminiRequest(model, systemPrompt, userMessage, apiKey);
+      } catch (err) {
+        lastErr = err;
+        if (!RETRYABLE_STATUS.has(err.status)) throw err;
+        console.error(`Gemini ${model} returned ${err.status} (attempt ${attempt + 1}), retrying...`);
+        if (attempt === 0) await sleep(backoffMs);
+      }
+    }
+  }
+  const busy = new Error('The AI is very busy right now. Please try again in a minute.');
+  busy.status = lastErr.status;
+  throw busy;
 }
 
 /**
@@ -90,7 +122,9 @@ function makeGeminiRequest(model, systemPrompt, userMessage, apiKey, options_ = 
         const body = Buffer.concat(chunks).toString('utf-8');
 
         if (res.statusCode !== 200) {
-          reject(new Error(`Gemini API error (${res.statusCode}): ${body}`));
+          const err = new Error(`Gemini API error (${res.statusCode}): ${body}`);
+          err.status = res.statusCode;
+          reject(err);
           return;
         }
 
