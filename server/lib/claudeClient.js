@@ -66,7 +66,7 @@ export async function callClaude(resumeText, intensity, targetRole) {
     throw new Error('ANTHROPIC_API_KEY is not configured');
   }
 
-  const model = process.env.MODEL || 'claude-3-haiku-20240307';
+  const model = process.env.MODEL || 'claude-haiku-4-5';
   const systemPrompt = getSystemPrompt(intensity, targetRole);
 
   let response = await makeClaudeRequest(model, systemPrompt, resumeText, apiKey);

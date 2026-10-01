@@ -14,7 +14,7 @@ export async function callGemini(resumeText, intensity, targetRole) {
     throw new Error('GEMINI_API_KEY is not configured');
   }
 
-  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+  const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
   const systemPrompt = getSystemPrompt(intensity, targetRole);
 
   let response = await makeGeminiRequest(model, systemPrompt, resumeText, apiKey);
